@@ -53,6 +53,10 @@ plotshape(gapUp, title="Gap Up", style=shape.xcross,
 plotshape(gapDown, title="Gap Down", style=shape.xcross,
      location=location.abovebar, color=color.red, size=size.tiny, text="G")
 
+// --- Đường 52-week High (đỉnh 252 ngày) ---
+weekHigh252 = ta.highest(close, 252)
+plot(weekHigh252, "52W High", color=color.purple, linewidth=1, linestyle=plot.linestyle_dashed)
+
 // --- Bảng thông tin (góc trên phải) ---
 // Đỏ = giá dưới MA (âm), Xanh = giá trên MA (dương)
 showTable = input.bool(true, "Show MA Distance Table", group="Table")
@@ -69,7 +73,7 @@ else if close < close[1]
 else
     streak := 0
 
-var table maTable = table.new(position.top_right, 2, 6,
+var table maTable = table.new(position.top_right, 2, 7,
      bgcolor=color.new(color.white, 0),
      frame_color=color.black, frame_width=1,
      border_color=color.gray, border_width=1)
@@ -116,3 +120,9 @@ if barstate.islast and showTable
     table.cell(maTable, 0, 5, "Streak", text_color=color.black)
     table.cell(maTable, 1, 5, streakText,
          text_color=streakCol, text_formatting=text.format_bold)
+
+    // % khoảng cách từ đỉnh 52 tuần
+    dist52w = (close - weekHigh252) / weekHigh252 * 100
+    table.cell(maTable, 0, 6, "52W High", text_color=color.black)
+    table.cell(maTable, 1, 6, str.tostring(dist52w, "#.##") + "%",
+         text_color=distColor(dist52w), text_formatting=text.format_bold)
