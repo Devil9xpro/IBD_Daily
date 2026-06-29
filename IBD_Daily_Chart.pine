@@ -17,10 +17,14 @@ plotbar(close, high, low, close, color=barCol)
 ma20  = ta.sma(close, len20)
 ma50  = ta.sma(close, len50)
 ma200 = ta.sma(close, len200)
+ma150 = ta.sma(close, 150)  // MA30 tuần, dùng cho Stage Analysis
 
 plot(ma20,  "MA 20",  color=color.orange, linewidth=2)
 plot(ma50,  "MA 50",  color=color.red,    linewidth=2)
 plot(ma200, "MA 200", color=#00BFFF,      linewidth=2)
+
+// --- Đường MA 150 (≈ MA30 tuần, dùng cho Stage Analysis) ---
+plot(ma150, "MA 150", color=color.purple, linewidth=2)
 
 // --- Phát hiện đỉnh / đáy (Pivot) ---
 pivotLen = input.int(30, "Pivot Lookback", minval=2, group="Pivots")
@@ -73,7 +77,31 @@ else if close < close[1]
 else
     streak := 0
 
-var table maTable = table.new(position.top_right, 2, 7,
+// Tính Up/Down Volume Ratio 50 ngày (tỷ lệ vol ngày tăng / vol ngày giảm)
+// > 1.5 = tích lũy tốt, < 0.7 = phân phối
+upVol50   = math.sum(close >= close[1] ? volume : 0, 50)
+dnVol50   = math.sum(close < close[1] ? volume : 0, 50)
+udRatio   = dnVol50 > 0 ? upVol50 / dnVol50 : 0.0
+
+// Tính Minervini Trend Template (SEPA) — 8 điều kiện Stage 2
+// 1. Giá > MA150 | 2. Giá > MA200 | 3. MA150 > MA200
+// 4. MA200 đang tăng (so với 20 ngày trước) | 5. Giá > MA50
+// 6. Giá cách 52-week low ≥ 25% | 7. Giá cách 52-week high ≤ 25%
+// 8. (Bỏ RS rating vì cần data benchmark)
+weekLow252  = ta.lowest(close, 252)
+
+cond1 = close > ma150
+cond2 = close > ma200
+cond3 = ma150 > ma200
+cond4 = ma200 > ma200[20]  // MA200 đang tăng
+cond5 = close > ma50
+cond6 = ((close - weekLow252) / weekLow252 * 100) >= 25  // Cách 52w low ≥ 25%
+cond7 = ((weekHigh252 - close) / weekHigh252 * 100) <= 25  // Cách 52w high ≤ 25%
+
+// Đếm số điều kiện đạt (tối đa 7)
+trendScore = (cond1 ? 1 : 0) + (cond2 ? 1 : 0) + (cond3 ? 1 : 0) + (cond4 ? 1 : 0) + (cond5 ? 1 : 0) + (cond6 ? 1 : 0) + (cond7 ? 1 : 0)
+
+var table maTable = table.new(position.top_right, 2, 9,
      bgcolor=color.new(color.white, 0),
      frame_color=color.black, frame_width=1,
      border_color=color.gray, border_width=1)
@@ -126,3 +154,51 @@ if barstate.islast and showTable
     table.cell(maTable, 0, 6, "52W High", text_color=color.black)
     table.cell(maTable, 1, 6, str.tostring(dist52w, "#.##") + "%",
          text_color=distColor(dist52w), text_formatting=text.format_bold)
+
+    // Up/Down Volume Ratio 50 ngày (đánh giá tích lũy/phân phối)
+    // Kết hợp U/D ratio + xu hướng giá để đánh giá phase
+    udCol = udRatio >= 1.5 ? color.green : udRatio <= 0.7 ? color.red : color.black
+    string udLabel = ""
+    if udRatio >= 1.5 and close > ma50
+        udLabel := "Tăng giá"
+        udCol := color.green
+    else if udRatio >= 1.5 and close <= ma50
+        udLabel := "Tích lũy"
+        udCol := color.green
+    else if udRatio >= 1.0
+        udLabel := "Trung tính"
+        udCol := color.black
+    else if udRatio >= 0.7
+        udLabel := "Yếu"
+        udCol := color.orange
+    else
+        udLabel := "Phân phối"
+        udCol := color.red
+    table.cell(maTable, 0, 7, "U/D Vol", text_color=color.black)
+    table.cell(maTable, 1, 7, str.tostring(udRatio, "#.##") + " — " + udLabel,
+         text_color=udCol, text_formatting=text.format_bold)
+
+    // Minervini Trend Template — xác định Stage
+    string trendText = ""
+    color trendCol = color.black
+    if trendScore == 7
+        trendText := "Stage 2 ✓ (" + str.tostring(trendScore) + "/7)"
+        trendCol := color.green
+    else if trendScore >= 5 and close > ma150 and close > ma50
+        trendText := "Stage 2 sớm (" + str.tostring(trendScore) + "/7)"
+        trendCol := color.green
+    else if close > ma150 and close < ma50
+        // Giá trên MA150 nhưng dưới MA50 → đang yếu dần (Stage 3)
+        trendText := "Stage 3 ⚠ (" + str.tostring(trendScore) + "/7)"
+        trendCol := color.orange
+    else if close < ma150 and close < ma200
+        // Giá dưới cả MA150 và MA200 → downtrend (Stage 4)
+        trendText := "Stage 4 ▼ (" + str.tostring(trendScore) + "/7)"
+        trendCol := color.red
+    else
+        // Giá quanh MA, chưa xác định rõ → nền tích lũy (Stage 1)
+        trendText := "Stage 1 — (" + str.tostring(trendScore) + "/7)"
+        trendCol := color.gray
+    table.cell(maTable, 0, 8, "SEPA", text_color=color.black)
+    table.cell(maTable, 1, 8, trendText,
+         text_color=trendCol, text_formatting=text.format_bold)
