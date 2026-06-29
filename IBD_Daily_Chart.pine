@@ -21,3 +21,23 @@ ma200 = ta.sma(close, len200)
 plot(ma20,  "MA 20",  color=color.orange, linewidth=2)
 plot(ma50,  "MA 50",  color=color.red,    linewidth=2)
 plot(ma200, "MA 200", color=#00BFFF,      linewidth=2)
+
+// --- Pivot High / Low Detection ---
+pivotLen = input.int(30, "Pivot Lookback", minval=2, group="Pivots")
+
+ph = ta.pivothigh(high, pivotLen, pivotLen)
+pl = ta.pivotlow(low, pivotLen, pivotLen)
+
+// Plot pivot high label (above the bar, offset back by pivotLen)
+if not na(ph)
+    label.new(bar_index - pivotLen, ph, str.tostring(ph, format.mintick),
+         style=label.style_label_down, color=color.white,
+         textcolor=color.black, size=size.small,
+         text_formatting=text.format_bold)
+
+// Plot pivot low label (below the bar, offset back by pivotLen)
+if not na(pl)
+    label.new(bar_index - pivotLen, pl, str.tostring(pl, format.mintick),
+         style=label.style_label_up, color=color.white,
+         textcolor=color.black, size=size.small,
+         text_formatting=text.format_bold)
