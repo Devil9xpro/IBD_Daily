@@ -1,19 +1,19 @@
 //@version=6
 indicator("IBD Daily Chart", overlay=true)
 
-// --- Inputs ---
+// --- Cài đặt đầu vào ---
 len20  = input.int(20, "SMA 20", minval=1)
 len50  = input.int(50, "SMA 50", minval=1)
 len200 = input.int(200, "SMA 200", minval=1)
 
-// --- HLC Bar (IBD style: bold, no open tick) ---
+// --- Thanh HLC kiểu IBD (không có open tick) ---
 isUp = close >= close[1]
 barCol = isUp ? color.black : color.red
 
 plotcandle(close, high, low, close, color=color.new(barCol, 100), wickcolor=barCol, bordercolor=barCol)
 plotbar(close, high, low, close, color=barCol)
 
-// --- Moving Averages ---
+// --- Đường trung bình động ---
 ma20  = ta.sma(close, len20)
 ma50  = ta.sma(close, len50)
 ma200 = ta.sma(close, len200)
@@ -22,22 +22,86 @@ plot(ma20,  "MA 20",  color=color.orange, linewidth=2)
 plot(ma50,  "MA 50",  color=color.red,    linewidth=2)
 plot(ma200, "MA 200", color=#00BFFF,      linewidth=2)
 
-// --- Pivot High / Low Detection ---
+// --- Phát hiện đỉnh / đáy (Pivot) ---
 pivotLen = input.int(30, "Pivot Lookback", minval=2, group="Pivots")
 
 ph = ta.pivothigh(high, pivotLen, pivotLen)
 pl = ta.pivotlow(low, pivotLen, pivotLen)
 
-// Plot pivot high label (above the bar, offset back by pivotLen)
+// Vẽ label đỉnh (phía trên thanh bar, lùi lại pivotLen bars)
 if not na(ph)
     label.new(bar_index - pivotLen, ph, str.tostring(ph, format.mintick),
          style=label.style_label_down, color=color.white,
          textcolor=color.black, size=size.small,
          text_formatting=text.format_bold)
 
-// Plot pivot low label (below the bar, offset back by pivotLen)
+// Vẽ label đáy (phía dưới thanh bar, lùi lại pivotLen bars)
 if not na(pl)
     label.new(bar_index - pivotLen, pl, str.tostring(pl, format.mintick),
          style=label.style_label_up, color=color.white,
          textcolor=color.black, size=size.small,
          text_formatting=text.format_bold)
+
+// --- Bảng thông tin (góc trên phải) ---
+// Đỏ = giá dưới MA (âm), Xanh = giá trên MA (dương)
+showTable = input.bool(true, "Show MA Distance Table", group="Table")
+
+// Tính ATR 14 ngày (biên độ trung bình)
+atrValue = ta.atr(14)
+
+// Đếm số ngày liên tiếp tăng/giảm
+var int streak = 0
+if close > close[1]
+    streak := streak[1] >= 0 ? streak[1] + 1 : 1
+else if close < close[1]
+    streak := streak[1] <= 0 ? streak[1] - 1 : -1
+else
+    streak := 0
+
+var table maTable = table.new(position.top_right, 2, 6,
+     bgcolor=color.new(color.white, 0),
+     frame_color=color.black, frame_width=1,
+     border_color=color.gray, border_width=1)
+
+// Hàm chọn màu: âm = đỏ, dương = xanh
+distColor(pct) =>
+    pct < 0 ? color.red : color.green
+
+if barstate.islast and showTable
+    dist20  = (close - ma20) / ma20 * 100
+    dist50  = (close - ma50) / ma50 * 100
+    dist200 = (close - ma200) / ma200 * 100
+
+    // Tiêu đề bảng
+    table.cell(maTable, 0, 0, "Chỉ số", text_color=color.white,
+         bgcolor=color.black, text_formatting=text.format_bold)
+    table.cell(maTable, 1, 0, "Giá trị", text_color=color.white,
+         bgcolor=color.black, text_formatting=text.format_bold)
+
+    // Khoảng cách từ MA 20
+    table.cell(maTable, 0, 1, "MA 20", text_color=color.black)
+    table.cell(maTable, 1, 1, str.tostring(dist20, "#.##") + "%",
+         text_color=distColor(dist20), text_formatting=text.format_bold)
+
+    // Khoảng cách từ MA 50
+    table.cell(maTable, 0, 2, "MA 50", text_color=color.black)
+    table.cell(maTable, 1, 2, str.tostring(dist50, "#.##") + "%",
+         text_color=distColor(dist50), text_formatting=text.format_bold)
+
+    // Khoảng cách từ MA 200
+    table.cell(maTable, 0, 3, "MA 200", text_color=color.black)
+    table.cell(maTable, 1, 3, str.tostring(dist200, "#.##") + "%",
+         text_color=distColor(dist200), text_formatting=text.format_bold)
+
+    // ATR 14 ngày (% so với giá)
+    atrPct = atrValue / close * 100
+    table.cell(maTable, 0, 4, "ATR(14)", text_color=color.black)
+    table.cell(maTable, 1, 4, str.tostring(atrPct, "#.##") + "%",
+         text_color=color.black, text_formatting=text.format_bold)
+
+    // Số ngày liên tiếp tăng/giảm
+    streakText = streak > 0 ? "▲" + str.tostring(streak) : streak < 0 ? "▼" + str.tostring(math.abs(streak)) : "—"
+    streakCol  = streak > 0 ? color.green : streak < 0 ? color.red : color.black
+    table.cell(maTable, 0, 5, "Streak", text_color=color.black)
+    table.cell(maTable, 1, 5, streakText,
+         text_color=streakCol, text_formatting=text.format_bold)
