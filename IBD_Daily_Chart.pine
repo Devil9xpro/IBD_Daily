@@ -101,7 +101,35 @@ cond7 = ((weekHigh252 - close) / weekHigh252 * 100) <= 25  // Cách 52w high ≤
 // Đếm số điều kiện đạt (tối đa 7)
 trendScore = (cond1 ? 1 : 0) + (cond2 ? 1 : 0) + (cond3 ? 1 : 0) + (cond4 ? 1 : 0) + (cond5 ? 1 : 0) + (cond6 ? 1 : 0) + (cond7 ? 1 : 0)
 
-var table maTable = table.new(position.top_right, 2, 9,
+// --- Base Count (O'Neil) ---
+// Đếm số lần breakout pivot high trong uptrend hiện tại
+// Reset khi stock rơi xuống dưới MA200 (kết thúc uptrend)
+var int baseCount = 0
+var float lastPivotHigh = 0.0
+var bool waitForNewPivot = false  // Chờ pivot mới sau mỗi breakout
+
+// Khi có pivot high mới → cập nhật mức pivot, cho phép trigger breakout
+if not na(ph)
+    lastPivotHigh := ph
+    waitForNewPivot := false
+
+// Khi giá breakout qua pivot high gần nhất → tăng base count
+breakoutSignal = close > lastPivotHigh and close[1] <= lastPivotHigh and lastPivotHigh > 0 and not waitForNewPivot
+if breakoutSignal
+    baseCount += 1
+    waitForNewPivot := true  // Chặn trigger lại cho đến khi có pivot mới
+
+// Hiện chữ "B" trên chart khi breakout pivot
+plotshape(breakoutSignal, title="Breakout", style=shape.triangleup,
+     location=location.belowbar, color=color.blue, size=size.tiny, text="B")
+
+// Reset base count khi stock rơi khỏi uptrend (giá < MA200)
+if close < ma200 and close[1] >= ma200
+    baseCount := 0
+    lastPivotHigh := 0.0
+    waitForNewPivot := false
+
+var table maTable = table.new(position.top_right, 2, 10,
      bgcolor=color.new(color.white, 0),
      frame_color=color.black, frame_width=1,
      border_color=color.gray, border_width=1)
@@ -202,3 +230,10 @@ if barstate.islast and showTable
     table.cell(maTable, 0, 8, "SEPA", text_color=color.black)
     table.cell(maTable, 1, 8, trendText,
          text_color=trendCol, text_formatting=text.format_bold)
+
+    // Base Count — đếm số lần breakout trong uptrend
+    baseCol = baseCount <= 2 ? color.green : baseCount <= 3 ? color.orange : color.red
+    baseLabel = baseCount == 0 ? "Chưa có" : baseCount <= 2 ? "Tốt" : baseCount == 3 ? "Cẩn thận" : "Muộn"
+    table.cell(maTable, 0, 9, "Base", text_color=color.black)
+    table.cell(maTable, 1, 9, "Lần " + str.tostring(baseCount) + " — " + baseLabel,
+         text_color=baseCol, text_formatting=text.format_bold)
