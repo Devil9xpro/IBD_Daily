@@ -42,6 +42,17 @@ if not na(pl)
          textcolor=color.black, size=size.small,
          text_formatting=text.format_bold)
 
+// --- Đánh dấu Gap mạnh (khoảng trống giá đáng tin cậy) ---
+// Chỉ hiện gap khi biên độ gap > X% giá (mặc định 2%)
+gapPct = input.float(2.0, "Gap tối thiểu (%)", minval=0.5, step=0.5, group="Gaps")
+gapUp   = open > high[1] and (open - high[1]) / close[1] * 100 > gapPct
+gapDown = open < low[1] and (low[1] - open) / close[1] * 100 > gapPct
+
+plotshape(gapUp, title="Gap Up", style=shape.xcross,
+     location=location.belowbar, color=color.green, size=size.tiny, text="G")
+plotshape(gapDown, title="Gap Down", style=shape.xcross,
+     location=location.abovebar, color=color.red, size=size.tiny, text="G")
+
 // --- Bảng thông tin (góc trên phải) ---
 // Đỏ = giá dưới MA (âm), Xanh = giá trên MA (dương)
 showTable = input.bool(true, "Show MA Distance Table", group="Table")
