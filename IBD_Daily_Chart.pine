@@ -104,9 +104,10 @@ var int distDayCount = 0
 distDayCount := 0
 for i = 1 to 25
     if close[i] < close[i + 1] * 0.998 and volume[i] > volume[i + 1]
-        // Đây là phiên phân phối — kiểm tra giá hiện tại đã rally 5% chưa
+        // Đây là phiên phân phối — chỉ đếm nếu giá hiện tại CHƯA rally 5% từ close phiên đó
         if close < close[i] * 1.05
             distDayCount += 1
+        // Nếu close hiện tại >= close[i] * 1.05 → phiên đó bị "defeated", không đếm
 
 // Tính Minervini Trend Template (SEPA) — 8 điều kiện Stage 2
 // 1. Giá > MA150 | 2. Giá > MA200 | 3. MA150 > MA200
@@ -148,8 +149,10 @@ if breakoutSignal
 plotshape(breakoutSignal and showBreakout, title="Breakout", style=shape.triangleup,
      location=location.belowbar, color=color.blue, size=size.tiny, text="B")
 
-// Reset base count khi stock rơi khỏi uptrend (giá < MA200)
-if close < ma200 and close[1] >= ma200
+// Reset base count khi stock rơi khỏi uptrend (giá < MA200 liên tiếp 3 phiên)
+// Không reset nếu chỉ xuyên thủng giả 1-2 phiên rồi bật lên ngay
+belowMA200count = ta.barssince(close >= ma200)
+if belowMA200count >= 3
     baseCount := 0
     lastPivotHigh := 0.0
     waitForNewPivot := false
@@ -271,15 +274,18 @@ if barstate.islast and showTable
 
 // --- Bảng phân tích cơ bản (góc dưới phải) ---
 // Hiện các chỉ số: rẻ/đắt, tăng trưởng, tiềm năng
+// Chỉ hiện bảng FA khi mở cổ phiếu (không hiện cho index/ETF)
+isStock = syminfo.type == "stock"
 showFundTable = input.bool(true, "Bảng cơ bản", group="Hiển thị")
 
 // Lấy dữ liệu tài chính từ TradingView (dùng ID chính xác từ docs)
-epsTTM    = request.financial(syminfo.tickerid, "EARNINGS_PER_SHARE_DILUTED", "TTM")
-bvps      = request.financial(syminfo.tickerid, "BOOK_VALUE_PER_SHARE", "FQ")
-roe       = request.financial(syminfo.tickerid, "RETURN_ON_EQUITY", "FQ")
-epsGrowth = request.financial(syminfo.tickerid, "EARNINGS_PER_SHARE_DILUTED_ONE_YEAR_GROWTH", "FQ")
-revGrowth = request.financial(syminfo.tickerid, "REVENUE_ONE_YEAR_GROWTH", "FQ")
-pretaxMargin = request.financial(syminfo.tickerid, "NET_MARGIN", "FQ")
+// Lưu ý: request.financial trả về na cho index/ETF — không gây lỗi nhưng không có data
+epsTTM    = request.financial(syminfo.tickerid, "EARNINGS_PER_SHARE_DILUTED", "TTM", ignore_invalid_symbol=true)
+bvps      = request.financial(syminfo.tickerid, "BOOK_VALUE_PER_SHARE", "FQ", ignore_invalid_symbol=true)
+roe       = request.financial(syminfo.tickerid, "RETURN_ON_EQUITY", "FQ", ignore_invalid_symbol=true)
+epsGrowth = request.financial(syminfo.tickerid, "EARNINGS_PER_SHARE_DILUTED_ONE_YEAR_GROWTH", "FQ", ignore_invalid_symbol=true)
+revGrowth = request.financial(syminfo.tickerid, "REVENUE_ONE_YEAR_GROWTH", "FQ", ignore_invalid_symbol=true)
+pretaxMargin = request.financial(syminfo.tickerid, "NET_MARGIN", "FQ", ignore_invalid_symbol=true)
 
 // Tự tính P/E, P/B, PEG
 peRatio = epsTTM > 0 ? close / epsTTM : na
@@ -292,7 +298,7 @@ var table fundTable = table.new(position.middle_left, 2, 11,
      frame_color=color.black, frame_width=1,
      border_color=color.gray, border_width=1)
 
-if barstate.islast and showFundTable
+if barstate.islast and showFundTable and isStock
     // Tiêu đề
     table.cell(fundTable, 0, 0, "Cơ bản", text_color=color.white,
          bgcolor=color.black, text_formatting=text.format_bold)
