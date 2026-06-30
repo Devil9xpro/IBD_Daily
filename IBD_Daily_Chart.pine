@@ -370,7 +370,7 @@ if barstate.islast and showFundTable and isStock
     string stockType = ""
     color typeCol = color.gray
     if not na(epsGrowth) and not na(revGrowth)
-        if (epsGrowth > 25 or revGrowth > 20) and (na(pretaxMargin) or pretaxMargin > 5)
+        if (epsGrowth > 25 or revGrowth > 20) and epsGrowth >= 0 and (na(pretaxMargin) or pretaxMargin > 5)
             stockType := "🚀 Tăng trưởng"
             typeCol := color.green
         else if epsGrowth > 25 and (na(pretaxMargin) or pretaxMargin <= 5)
