@@ -1,3 +1,4 @@
 # Exclude subprojects (they have their own repos)
 PineGenius/
 Pydantic-AI-Pinescript-Expert/
+WyckoffTradingAgent/
