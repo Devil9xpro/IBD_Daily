@@ -258,12 +258,15 @@ bvps      = request.financial(syminfo.tickerid, "BOOK_VALUE_PER_SHARE", "FQ")
 roe       = request.financial(syminfo.tickerid, "RETURN_ON_EQUITY", "FQ")
 epsGrowth = request.financial(syminfo.tickerid, "EARNINGS_PER_SHARE_DILUTED_ONE_YEAR_GROWTH", "FQ")
 revGrowth = request.financial(syminfo.tickerid, "REVENUE_ONE_YEAR_GROWTH", "FQ")
+pretaxMargin = request.financial(syminfo.tickerid, "NET_MARGIN", "FQ")
 
-// Tự tính P/E và P/B (TradingView không cung cấp trực tiếp)
+// Tự tính P/E, P/B, PEG
 peRatio = epsTTM > 0 ? close / epsTTM : na
 pbRatio = bvps > 0 ? close / bvps : na
+// PEG = P/E chia cho EPS growth (Peter Lynch: < 1 = rẻ so với tăng trưởng)
+pegRatio = not na(peRatio) and not na(epsGrowth) and epsGrowth > 0 ? peRatio / epsGrowth : na
 
-var table fundTable = table.new(position.middle_left, 2, 7,
+var table fundTable = table.new(position.middle_left, 2, 9,
      bgcolor=color.new(color.white, 0),
      frame_color=color.black, frame_width=1,
      border_color=color.gray, border_width=1)
@@ -276,43 +279,58 @@ if barstate.islast and showFundTable
          bgcolor=color.black, text_formatting=text.format_bold)
 
     // P/E — rẻ hay đắt
-    peCol = na(peRatio) ? color.gray : peRatio < 15 ? color.green : peRatio > 30 ? color.red : color.black
+    peCol = na(peRatio) ? color.gray : peRatio < 20 ? color.green : peRatio > 40 ? color.red : color.black
     peText = na(peRatio) ? "N/A" : str.tostring(peRatio, "#.#")
     table.cell(fundTable, 0, 1, "P/E", text_color=color.black)
     table.cell(fundTable, 1, 1, peText,
          text_color=peCol, text_formatting=text.format_bold)
 
-    // P/B — rẻ hay đắt
-    pbCol = na(pbRatio) ? color.gray : pbRatio < 1.5 ? color.green : pbRatio > 4 ? color.red : color.black
-    pbText = na(pbRatio) ? "N/A" : str.tostring(pbRatio, "#.##")
-    table.cell(fundTable, 0, 2, "P/B", text_color=color.black)
-    table.cell(fundTable, 1, 2, pbText,
-         text_color=pbCol, text_formatting=text.format_bold)
+    // PEG — Peter Lynch: P/E so với tốc độ tăng trưởng
+    // < 1 = undervalued (tăng trưởng nhanh hơn giá), > 2 = đắt
+    pegCol = na(pegRatio) ? color.gray : pegRatio < 1 ? color.green : pegRatio > 2 ? color.red : color.black
+    pegText = na(pegRatio) ? "N/A" : str.tostring(pegRatio, "#.##")
+    table.cell(fundTable, 0, 2, "PEG", text_color=color.black)
+    table.cell(fundTable, 1, 2, pegText,
+         text_color=pegCol, text_formatting=text.format_bold)
 
-    // ROE — hiệu quả sử dụng vốn
-    roeCol = na(roe) ? color.gray : roe > 15 ? color.green : roe < 5 ? color.red : color.black
+    // ROE — hiệu quả sử dụng vốn (Minervini: > 17%)
+    roeCol = na(roe) ? color.gray : roe > 17 ? color.green : roe < 10 ? color.red : color.black
     roeText = na(roe) ? "N/A" : str.tostring(roe, "#.#") + "%"
     table.cell(fundTable, 0, 3, "ROE", text_color=color.black)
     table.cell(fundTable, 1, 3, roeText,
          text_color=roeCol, text_formatting=text.format_bold)
 
-    // EPS Growth YoY — tăng trưởng lợi nhuận
+    // EPS Growth YoY — Minervini/O'Neil: > 25% mỗi quý
     epsGCol = na(epsGrowth) ? color.gray : epsGrowth > 25 ? color.green : epsGrowth < 0 ? color.red : color.black
     epsGText = na(epsGrowth) ? "N/A" : str.tostring(epsGrowth, "#.#") + "%"
     table.cell(fundTable, 0, 4, "EPS ▲", text_color=color.black)
     table.cell(fundTable, 1, 4, epsGText,
          text_color=epsGCol, text_formatting=text.format_bold)
 
-    // Revenue Growth YoY — tăng trưởng doanh thu
-    revGCol = na(revGrowth) ? color.gray : revGrowth > 20 ? color.green : revGrowth < 0 ? color.red : color.black
+    // Revenue Growth YoY — Minervini: > 25%
+    revGCol = na(revGrowth) ? color.gray : revGrowth > 25 ? color.green : revGrowth < 0 ? color.red : color.black
     revGText = na(revGrowth) ? "N/A" : str.tostring(revGrowth, "#.#") + "%"
     table.cell(fundTable, 0, 5, "Rev ▲", text_color=color.black)
     table.cell(fundTable, 1, 5, revGText,
          text_color=revGCol, text_formatting=text.format_bold)
 
+    // Net Margin — biên lợi nhuận ròng (sau thuế, lãi vay)
+    marginCol = na(pretaxMargin) ? color.gray : pretaxMargin > 15 ? color.green : pretaxMargin < 5 ? color.red : color.black
+    marginText = na(pretaxMargin) ? "N/A" : str.tostring(pretaxMargin, "#.#") + "%"
+    table.cell(fundTable, 0, 6, "Net Margin", text_color=color.black)
+    table.cell(fundTable, 1, 6, marginText,
+         text_color=marginCol, text_formatting=text.format_bold)
+
     // EPS TTM hiện tại
     epsCol = na(epsTTM) ? color.gray : epsTTM > 0 ? color.green : color.red
     epsText = na(epsTTM) ? "N/A" : str.tostring(epsTTM, format.mintick)
-    table.cell(fundTable, 0, 6, "EPS", text_color=color.black)
-    table.cell(fundTable, 1, 6, epsText,
+    table.cell(fundTable, 0, 7, "EPS", text_color=color.black)
+    table.cell(fundTable, 1, 7, epsText,
          text_color=epsCol, text_formatting=text.format_bold)
+
+    // P/B
+    pbCol = na(pbRatio) ? color.gray : pbRatio < 2 ? color.green : pbRatio > 5 ? color.red : color.black
+    pbText = na(pbRatio) ? "N/A" : str.tostring(pbRatio, "#.##")
+    table.cell(fundTable, 0, 8, "P/B", text_color=color.black)
+    table.cell(fundTable, 1, 8, pbText,
+         text_color=pbCol, text_formatting=text.format_bold)
