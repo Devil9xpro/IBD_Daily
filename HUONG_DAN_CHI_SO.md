@@ -116,3 +116,33 @@
 | Label dưới | Trắng/đen | Giá đáy pivot |
 | Đường tím liền | — | MA 150 (30 tuần) |
 | Đường tím dashed | — | 52-week High |
+
+---
+
+## Checklist trước khi MUA (tất cả phải align)
+
+Dựa trên phương pháp Minervini — chờ mọi dấu hiệu đúng cùng lúc:
+
+### Bảng kỹ thuật (phải):
+- [ ] **SEPA ≥ 5/7** (tốt nhất 7/7) — uptrend xác nhận
+- [ ] **U/D Vol ≥ 1.5** (Tích lũy) — smart money đang mua
+- [ ] **Base lần 1-2** — breakout sớm, chưa late stage
+- [ ] **Breakout "B" vừa xuất hiện** — timing entry
+
+### Bảng cơ bản (trái):
+- [ ] **PEG < 1** — giá rẻ so với tăng trưởng
+- [ ] **EPS ▲ > 25%** — lợi nhuận tăng mạnh
+- [ ] **Rev ▲ > 0%** — doanh thu đang tăng (không chỉ cắt chi phí)
+- [ ] **Loại: 🚀 Tăng trưởng** — xác nhận growth stock
+
+### Quy tắc vào lệnh:
+1. Chờ tất cả checklist ✅ → MUA tại breakout "B"
+2. Stoploss: đặt dưới đáy pivot gần nhất (7-8% max loss)
+3. Nếu thiếu 1-2 điều kiện → THEO DÕI, không mua
+4. Nếu SEPA < 3 hoặc U/D Vol < 0.7 → TRÁNH hoàn toàn
+
+### Quy tắc bán:
+1. Giá giảm 7-8% từ điểm mua → cắt lỗ ngay (Minervini iron rule)
+2. Giá vượt fair value → cân nhắc chốt lời 1 phần
+3. SEPA giảm từ 7 xuống < 4 → bán hết
+4. U/D Vol chuyển sang "Phân phối" → cảnh giác bán
