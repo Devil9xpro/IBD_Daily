@@ -365,8 +365,8 @@ if barstate.islast and showFundTable
     if not na(epsTTM) and epsTTM > 0
         float fairVal = 0.0
         if not na(epsGrowth) and epsGrowth > 25
-            // Growth: fair P/E = min(EPS growth, 25) — Peter Lynch (cap 25 theo chuẩn ngành)
-            fairVal := epsTTM * math.min(epsGrowth, 25)
+            // Growth: fair P/E = min(EPS growth, 15) — Peter Lynch, cap 15 cho thị trường VN
+            fairVal := epsTTM * math.min(epsGrowth, 15)
         else if not na(bvps) and bvps > 0
             // Ổn định: Graham Number
             fairVal := math.sqrt(22.5 * epsTTM * bvps)
