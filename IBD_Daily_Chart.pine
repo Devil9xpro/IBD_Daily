@@ -362,22 +362,26 @@ if barstate.islast and showFundTable and isStock
     table.cell(fundTable, 1, 8, pbText,
          text_color=pbCol, text_formatting=text.format_bold)
 
-    // Phân loại cổ phiếu: Tăng trưởng hay Ổn định
+    // Phân loại cổ phiếu: Tăng trưởng / Phục hồi / Ổn định / Suy giảm
     // Growth: EPS > 25% hoặc Rev > 20%, VÀ Net Margin > 5% (loại bỏ phục hồi từ lỗ)
+    // Phục hồi: EPS > 25% nhưng Net Margin ≤ 5% (vừa thoát lỗ, chưa bền)
     // Ổn định: EPS 0-25% và Rev 0-20%
-    // Suy giảm: EPS < 0 hoặc Rev < 0
+    // Suy giảm: cả EPS < 0 VÀ Rev < 0 (cả hai cùng xấu)
     string stockType = ""
     color typeCol = color.gray
     if not na(epsGrowth) and not na(revGrowth)
         if (epsGrowth > 25 or revGrowth > 20) and (na(pretaxMargin) or pretaxMargin > 5)
             stockType := "🚀 Tăng trưởng"
             typeCol := color.green
-        else if epsGrowth >= 0 and revGrowth >= 0
-            stockType := "⚖️ Ổn định"
-            typeCol := color.blue
-        else
+        else if epsGrowth > 25 and (na(pretaxMargin) or pretaxMargin <= 5)
+            stockType := "📈 Phục hồi"
+            typeCol := color.orange
+        else if epsGrowth < 0 and revGrowth < 0
             stockType := "⚠️ Suy giảm"
             typeCol := color.red
+        else
+            stockType := "⚖️ Ổn định"
+            typeCol := color.blue
     else
         stockType := "N/A"
     table.cell(fundTable, 0, 9, "Loại", text_color=color.black)
