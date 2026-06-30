@@ -6,6 +6,16 @@ len20  = input.int(20, "SMA 20", minval=1)
 len50  = input.int(50, "SMA 50", minval=1)
 len200 = input.int(200, "SMA 200", minval=1)
 
+// --- Toggle bật/tắt từng component ---
+showMA20    = input.bool(true, "MA 20", group="Hiển thị")
+showMA50    = input.bool(true, "MA 50", group="Hiển thị")
+showMA150   = input.bool(true, "MA 150", group="Hiển thị")
+showMA200   = input.bool(true, "MA 200", group="Hiển thị")
+showPivots  = input.bool(true, "Đỉnh/Đáy", group="Hiển thị")
+showGaps    = input.bool(true, "Gap marker", group="Hiển thị")
+show52wHigh = input.bool(true, "52W High", group="Hiển thị")
+showBreakout = input.bool(true, "Breakout (B)", group="Hiển thị")
+
 // --- Thanh HLC kiểu IBD (không có open tick) ---
 isUp = close >= close[1]
 barCol = isUp ? color.black : color.red
@@ -19,12 +29,12 @@ ma50  = ta.sma(close, len50)
 ma200 = ta.sma(close, len200)
 ma150 = ta.sma(close, 150)  // MA30 tuần, dùng cho Stage Analysis
 
-plot(ma20,  "MA 20",  color=color.orange, linewidth=2)
-plot(ma50,  "MA 50",  color=color.red,    linewidth=2)
-plot(ma200, "MA 200", color=#00BFFF,      linewidth=2)
+plot(showMA20 ? ma20 : na,  "MA 20",  color=color.orange, linewidth=2)
+plot(showMA50 ? ma50 : na,  "MA 50",  color=color.red,    linewidth=2)
+plot(showMA200 ? ma200 : na, "MA 200", color=#00BFFF,      linewidth=2)
 
 // --- Đường MA 150 (≈ MA30 tuần, dùng cho Stage Analysis) ---
-plot(ma150, "MA 150", color=color.purple, linewidth=2)
+plot(showMA150 ? ma150 : na, "MA 150", color=color.purple, linewidth=2)
 
 // --- Phát hiện đỉnh / đáy (Pivot) ---
 pivotLen = input.int(30, "Pivot Lookback", minval=2, group="Pivots")
@@ -33,14 +43,14 @@ ph = ta.pivothigh(high, pivotLen, pivotLen)
 pl = ta.pivotlow(low, pivotLen, pivotLen)
 
 // Vẽ label đỉnh (phía trên thanh bar, lùi lại pivotLen bars)
-if not na(ph)
+if not na(ph) and showPivots
     label.new(bar_index - pivotLen, ph, str.tostring(ph, format.mintick),
          style=label.style_label_down, color=color.white,
          textcolor=color.black, size=size.small,
          text_formatting=text.format_bold)
 
 // Vẽ label đáy (phía dưới thanh bar, lùi lại pivotLen bars)
-if not na(pl)
+if not na(pl) and showPivots
     label.new(bar_index - pivotLen, pl, str.tostring(pl, format.mintick),
          style=label.style_label_up, color=color.white,
          textcolor=color.black, size=size.small,
@@ -52,14 +62,14 @@ gapPct = input.float(2.0, "Gap tối thiểu (%)", minval=0.5, step=0.5, group="
 gapUp   = open > high[1] and (open - high[1]) / close[1] * 100 > gapPct
 gapDown = open < low[1] and (low[1] - open) / close[1] * 100 > gapPct
 
-plotshape(gapUp, title="Gap Up", style=shape.xcross,
+plotshape(gapUp and showGaps, title="Gap Up", style=shape.xcross,
      location=location.belowbar, color=color.green, size=size.tiny, text="G")
-plotshape(gapDown, title="Gap Down", style=shape.xcross,
+plotshape(gapDown and showGaps, title="Gap Down", style=shape.xcross,
      location=location.abovebar, color=color.red, size=size.tiny, text="G")
 
 // --- Đường 52-week High (đỉnh 252 ngày) ---
 weekHigh252 = ta.highest(close, 252)
-plot(weekHigh252, "52W High", color=color.purple, linewidth=1, linestyle=plot.linestyle_dashed)
+plot(show52wHigh ? weekHigh252 : na, "52W High", color=color.purple, linewidth=1, linestyle=plot.linestyle_dashed)
 
 // --- Bảng thông tin (góc trên phải) ---
 // Đỏ = giá dưới MA (âm), Xanh = giá trên MA (dương)
@@ -120,7 +130,7 @@ if breakoutSignal
     waitForNewPivot := true  // Chặn trigger lại cho đến khi có pivot mới
 
 // Hiện chữ "B" trên chart khi breakout pivot
-plotshape(breakoutSignal, title="Breakout", style=shape.triangleup,
+plotshape(breakoutSignal and showBreakout, title="Breakout", style=shape.triangleup,
      location=location.belowbar, color=color.blue, size=size.tiny, text="B")
 
 // Reset base count khi stock rơi khỏi uptrend (giá < MA200)
