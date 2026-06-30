@@ -363,13 +363,13 @@ if barstate.islast and showFundTable and isStock
          text_color=pbCol, text_formatting=text.format_bold)
 
     // Phân loại cổ phiếu: Tăng trưởng hay Ổn định
-    // Growth: EPS > 25% hoặc Rev > 20%
+    // Growth: EPS > 25% hoặc Rev > 20%, VÀ Net Margin > 5% (loại bỏ phục hồi từ lỗ)
     // Ổn định: EPS 0-25% và Rev 0-20%
     // Suy giảm: EPS < 0 hoặc Rev < 0
     string stockType = ""
     color typeCol = color.gray
     if not na(epsGrowth) and not na(revGrowth)
-        if epsGrowth > 25 or revGrowth > 20
+        if (epsGrowth > 25 or revGrowth > 20) and (na(pretaxMargin) or pretaxMargin > 5)
             stockType := "🚀 Tăng trưởng"
             typeCol := color.green
         else if epsGrowth >= 0 and revGrowth >= 0
