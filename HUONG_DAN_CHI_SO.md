@@ -146,3 +146,84 @@ Dựa trên phương pháp Minervini — chờ mọi dấu hiệu đúng cùng l
 2. Giá vượt fair value → cân nhắc chốt lời 1 phần
 3. SEPA giảm từ 7 xuống < 4 → bán hết
 4. U/D Vol chuyển sang "Phân phối" → cảnh giác bán
+
+---
+
+## VSA (Volume Spread Analysis) — Nhận diện nến trên chart
+
+VSA phân tích mối quan hệ giữa **Volume** (khối lượng), **Spread** (biên độ thanh bar), và **Close Position** (vị trí đóng cửa) để phát hiện smart money đang làm gì.
+
+### Cách đọc 3 yếu tố:
+- **Volume**: so với trung bình 20 phiên (cao/thấp)
+- **Spread**: biên độ high-low so với trung bình 20 phiên (rộng/hẹp)
+- **Close Position**: close gần high (buyer mạnh) hay gần low (seller mạnh)
+
+### 8 nến VSA trên chart:
+
+#### Bullish (tín hiệu tích cực):
+
+**SV — Stopping Volume** 🟢
+- Volume cực cao (> 2x avg 20 phiên) + spread lớn + close gần high (> 50% range) + **bar giảm** (close < close trước)
+- Xuất hiện khi giá đang giảm (< MA50)
+- Ý nghĩa: Bar giảm nhưng smart money đang **hấp thụ** bán ra → close bật lên gần high. Đáy có thể đang hình thành.
+- Hành động: Theo dõi, chờ xác nhận bằng No Supply sau đó
+
+**NS — No Supply** 🟢
+- Volume thấp (< 50% avg 20 phiên) + spread nhỏ (< 50% avg spread) + giá giảm nhẹ
+- Có ý nghĩa ở vùng đáy HOẶC vùng tích lũy (không nhất thiết phải < MA50)
+- Ý nghĩa: Không còn ai muốn bán nữa. Selling đã cạn kiệt.
+- Hành động: Nếu xuất hiện SAU Stopping Volume hoặc trong vùng tích lũy → tín hiệu sắp breakout
+
+**SC — Selling Climax** 🟢
+- Volume cao nhất 50 ngày + giá giảm mạnh (> 3%)
+- Ý nghĩa: Bán tháo hoảng loạn ở đáy. Smart money đang gom hàng từ retail sợ hãi.
+- Hành động: KHÔNG mua ngay. Chờ Test hoặc No Supply xác nhận đáy.
+
+**AB — Absorption** 🟢
+- Volume cao (> 2x avg 20 phiên) + spread RẤT nhỏ + giá gần như không đổi
+- Ý nghĩa: Volume lớn nhưng giá không giảm → smart money đang "nuốt" toàn bộ supply
+- Hành động: Bullish ngầm. Giá sắp tăng khi supply hết.
+
+**SOS — Sign of Strength** 🟢
+- Volume cao (> 1.5x avg 20 phiên) + spread rộng (> avg) + close gần high + giá tăng mạnh (> 2%)
+- Thường xuất hiện SAU Stopping Volume, Selling Climax, hoặc No Supply (context lý tưởng)
+- Nhưng bất kỳ phiên tăng mạnh + vol cao breakout khỏi vùng tích lũy đều tính là SOS
+- Ý nghĩa: Xác nhận smart money đã gom xong và bắt đầu đẩy giá lên. Tín hiệu chuyển từ tích lũy sang uptrend.
+- Hành động: Điểm mua. Đặc biệt mạnh nếu vượt resistance/pivot.
+
+#### Bearish (tín hiệu tiêu cực):
+
+**UT — Upthrust** 🔴
+- Volume cao (> 1.5x avg 20 phiên) + wick trên dài (> 60% spread) + close gần low
+- Xuất hiện khi giá đang tăng (> MA50)
+- Ý nghĩa: Smart money **trap buyers** — đẩy giá lên cao rồi xả hàng. Retail mua ở đỉnh bị kẹt.
+- Hành động: Cẩn thận, có thể đảo chiều giảm
+
+**ND — No Demand** 🔴
+- Volume thấp (< 50% avg 20 phiên) + spread nhỏ + giá tăng nhẹ
+- Xuất hiện khi giá trên MA50 (vùng đỉnh)
+- Ý nghĩa: Giá tăng nhưng KHÔNG CÓ AI thực sự muốn mua. Tăng giả, sắp giảm.
+- Hành động: KHÔNG mua. Nếu nhiều No Demand liên tiếp → chuẩn bị bán
+
+**SOW — Sign of Weakness** 🔴
+- Volume cao (> 1.5x avg 20 phiên) + spread rộng (> avg) + close gần low + giá giảm mạnh (> 2%)
+- Xuất hiện SAU Upthrust hoặc No Demand liên tiếp
+- Ý nghĩa: Xác nhận smart money đã bán xong, giá bắt đầu giảm thực sự. Tín hiệu chuyển từ phân phối sang downtrend.
+- Hành động: BÁN. Không cố giữ.
+
+### Cách đọc VSA kết hợp context:
+
+**Sequence bullish điển hình (ở đáy):**
+```
+SC (Selling Climax) → SV (Stopping Volume) → NS (No Supply) → SOS (Sign of Strength) → Breakout ▲
+```
+
+**Sequence bearish điển hình (ở đỉnh):**
+```
+ND (No Demand) → ND → UT (Upthrust) → SOW (Sign of Weakness) → Breakdown ▼
+```
+
+### Quy tắc quan trọng:
+1. VSA chỉ có ý nghĩa khi xét CONTEXT (vùng đỉnh hay đáy)
+2. 1 nến đơn lẻ không đủ → cần sequence (2-3 nến liên tiếp xác nhận)
+3. VSA bullish ở đáy + MF Score > 70 + SEPA đang cải thiện = tín hiệu mạnh nhất
