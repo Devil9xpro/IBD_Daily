@@ -109,6 +109,34 @@ for i = 1 to 25
             distDayCount += 1
         // Nếu close hiện tại >= close[i] * 1.05 → phiên đó bị "defeated", không đếm
 
+// --- Main Force Score (phát hiện smart money) ---
+// Kết hợp 3 yếu tố: Demand, Supply, Price → điểm 0-100
+volAvg20 = ta.sma(volume, 20)
+volAvg50MF = ta.sma(volume, 50)
+
+// Close Position: (close - low) / (high - low)
+closePos = high != low ? (close - low) / (high - low) : 0.5
+closePos5 = ta.sma(closePos, 5)
+
+// Demand: volume ngày tăng 10 ngày / vol avg 20 ngày
+upVolSum10 = math.sum(close > close[1] ? volume : 0, 10)
+upDays10   = math.sum(close > close[1] ? 1 : 0, 10)
+demandRatio = volAvg20 > 0 ? upVolSum10 / (volAvg20 * 10) : 0
+
+// Supply: volume ngày giảm 10 ngày (càng thấp càng tốt)
+dnVolSum10 = math.sum(close < close[1] ? volume : 0, 10)
+supplyRatio = volAvg20 > 0 ? dnVolSum10 / (volAvg20 * 10) : 0
+
+// Support hold: giá giữ trên MA20 và MA50 tốt không
+supportScore = (close > ma20 ? 0.5 : 0) + (close > ma50 ? 0.5 : 0)
+
+// Tính Main Force Score (0-100)
+demandScore = math.max(0, math.min(demandRatio / 0.6, 1.0))  // Normalize: 0.6 = baseline
+supplyScore = math.max(0, math.min((1.0 - supplyRatio) / 0.6, 1.0))  // Vol bán thấp = tốt
+priceScore  = closePos5 * 0.4 + supportScore * 0.4 + (close > ta.highest(high, 20)[1] ? 0.2 : 0)
+
+mainForceScore = math.round((demandScore * 38 + supplyScore * 34 + priceScore * 28))
+
 // Tính Minervini Trend Template (SEPA) — 8 điều kiện Stage 2
 // 1. Giá > MA150 | 2. Giá > MA200 | 3. MA150 > MA200
 // 4. MA200 đang tăng (so với 20 ngày trước) | 5. Giá > MA50
@@ -157,7 +185,7 @@ if belowMA200count >= 3
     lastPivotHigh := 0.0
     waitForNewPivot := false
 
-var table maTable = table.new(position.top_right, 2, 11,
+var table maTable = table.new(position.top_right, 2, 12,
      bgcolor=color.new(color.white, 0),
      frame_color=color.black, frame_width=1,
      border_color=color.gray, border_width=1)
@@ -212,20 +240,26 @@ if barstate.islast and showTable
          text_color=distColor(dist52w), text_formatting=text.format_bold)
 
     // Up/Down Volume Ratio 50 ngày (đánh giá tích lũy/phân phối)
-    // Kết hợp U/D ratio + xu hướng giá để đánh giá phase
-    udCol = udRatio >= 1.5 ? color.green : udRatio <= 0.7 ? color.red : color.black
+    // 7 mức chi tiết dựa trên U/D ratio + vị trí giá
+    udCol = color.black
     string udLabel = ""
     if udRatio >= 1.5 and close > ma50
         udLabel := "Tăng giá"
         udCol := color.green
+    else if udRatio >= 1.1 and close > ma50
+        udLabel := "Tăng giá sớm"
+        udCol := color.teal
     else if udRatio >= 1.5 and close <= ma50
         udLabel := "Tích lũy"
         udCol := color.green
-    else if udRatio >= 1.0
-        udLabel := "Trung tính"
-        udCol := color.black
-    else if udRatio >= 0.7
-        udLabel := "Yếu"
+    else if udRatio >= 1.1 and close <= ma50
+        udLabel := "Tích lũy sớm"
+        udCol := color.teal
+    else if udRatio >= 0.9 and udRatio < 1.1
+        udLabel := "Sideway"
+        udCol := color.gray
+    else if udRatio >= 0.7 and udRatio < 0.9
+        udLabel := "Phân phối sớm"
         udCol := color.orange
     else
         udLabel := "Phân phối"
@@ -271,6 +305,13 @@ if barstate.islast and showTable
     table.cell(maTable, 0, 10, "Dist Day", text_color=color.black)
     table.cell(maTable, 1, 10, str.tostring(distDayCount) + "/25 ngày",
          text_color=distCol, text_formatting=text.format_bold)
+
+    // Main Force Score — smart money đang mua hay bán
+    mfCol = mainForceScore >= 70 ? color.green : mainForceScore < 40 ? color.red : color.black
+    mfLabel = mainForceScore >= 70 ? "Mua vào" : mainForceScore >= 40 ? "Trung tính" : "Bán ra"
+    table.cell(maTable, 0, 11, "MF Score", text_color=color.black)
+    table.cell(maTable, 1, 11, str.tostring(mainForceScore) + " — " + mfLabel,
+         text_color=mfCol, text_formatting=text.format_bold)
 
 // --- Bảng phân tích cơ bản (góc dưới phải) ---
 // Hiện các chỉ số: rẻ/đắt, tăng trưởng, tiềm năng
