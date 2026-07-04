@@ -11,8 +11,58 @@
 | Streak | Số ngày liên tiếp tăng/giảm | ▲ tăng | ▼ giảm |
 | 52W High | Giá cách đỉnh 52 tuần bao nhiêu % | Gần 0% (gần đỉnh) | < -25% (xa đỉnh) |
 | U/D Vol | Tỷ lệ volume ngày tăng / ngày giảm trong 50 ngày | ≥ 1.5 (tích lũy) | ≤ 0.7 (phân phối) |
-| SEPA | Minervini Trend Template (7 điều kiện) | 7/7 Stage 2 | 0-2/7 Stage 4 |
-| Base | Số lần breakout trong uptrend hiện tại | Lần 1-2 (cơ hội tốt) | Lần 4+ (muộn, rủi ro) |
+| Dist Day | Số phiên phân phối trong 25 ngày (O'Neil) | 0-2 (an toàn) | ≥ 5 (nguy hiểm) |
+| MF Score | Main Force Score — smart money 0-100 | ≥ 70 (mua vào) | < 40 (bán ra) |
+| Vol Trend | Volume 10 ngày / Volume 50 ngày | < 0.7x (Dry-up, sẵn sàng breakout) | > 1.3x (Expand/Bùng nổ) |
+| Tight | Số ngày liên tiếp biên độ < 0.5×ATR | ≥ 5 (nén mạnh, setup breakout) | — |
+| RS | Performance 3 tháng so với VN-Index | Dương + ↑ (outperform, cải thiện) | Âm + ↓ (underperform, yếu đi) |
+
+### Vol Trend (chi tiết)
+- **Là gì:** So sánh volume trung bình 10 ngày với volume trung bình 50 ngày
+- **Ý nghĩa:** Volume đang tăng hay giảm so với bình thường
+- **Đánh giá:**
+  - < 0.7x: **Dry-up** (xanh) — volume co lại, supply cạn, sẵn sàng breakout. Đây là VCP signal.
+  - 0.7-1.3x: **Bình thường** (đen) — không có gì đặc biệt
+  - > 1.3x: **Expand** (cam) — volume đang tăng, cần xem giá tăng hay giảm
+  - > 1.5x: **Bùng nổ** (cam) — volume cực cao, có thể breakout hoặc distribution
+- **Kết hợp:** Vol Trend Dry-up + Tight ≥ 5 + giá gần pivot high = setup breakout lý tưởng
+
+### Tight Close (chi tiết)
+- **Là gì:** Đếm số ngày liên tiếp biên độ thanh bar (high - low) nhỏ hơn 0.5 × ATR(14)
+- **Ý nghĩa:** Stock đang nén giá — biên độ co lại bất thường, supply và demand đang cân bằng ở mức thấp. Khi 1 bên bứt phá → giá sẽ move mạnh.
+- **Tại sao dùng 0.5 × ATR:** ATR là biên độ trung bình — nếu 1 ngày có range nhỏ hơn nửa mức bình thường, đó là ngày "yên bất thường". Dùng ATR thay vì % cố định để tự adapt theo từng stock.
+- **Đánh giá:**
+  - 0-2 ngày: **—** (đen) — bình thường, chưa có gì
+  - 3-4 ngày: **Nén** (teal) — bắt đầu co lại, theo dõi
+  - ≥ 5 ngày: **Nén mạnh ✓** (xanh) — setup breakout, sẵn sàng move
+- **Cách dùng:**
+  1. Tight ≥ 5 → stock đang nén, chờ breakout
+  2. Kết hợp Vol Trend Dry-up (< 0.7x) → xác nhận supply cạn kiệt
+  3. Khi breakout "B" xuất hiện SAU tight period → entry point mạnh
+  4. Stoploss đặt dưới vùng tight (đáy gần nhất trong chuỗi tight)
+- **Lưu ý:** Tight chỉ có ý nghĩa trong context uptrend hoặc base. Stock đang downtrend mạnh cũng có thể tight 1-2 ngày trước khi giảm tiếp — cần kết hợp với U/D Vol và MF Score.
+
+### RS (Relative Strength vs Index)
+- **Là gì:** So sánh performance 3 tháng (63 phiên) của cổ phiếu với VN-Index
+- **Công thức:** RS = (% thay đổi cổ phiếu 63 ngày) - (% thay đổi VN-Index 63 ngày)
+- **Ý nghĩa:** Cổ phiếu đang mạnh hơn hay yếu hơn thị trường chung
+- **Đánh giá:**
+  - Dương (xanh): **Outperform** — cổ phiếu mạnh hơn index. O'Neil chỉ mua stock RS dương.
+  - Âm (đỏ): **Underperform** — cổ phiếu yếu hơn index. Tránh.
+- **Mũi tên Trend (RS đang cải thiện hay yếu đi):**
+  - ↑ : RS tăng > 2% so với 10 ngày trước — stock đang mạnh lên so với thị trường
+  - → : RS ổn định (thay đổi < 2%)
+  - ↓ : RS giảm > 2% so với 10 ngày trước — stock đang yếu đi
+- **Cách dùng:**
+  1. RS dương + ↑ = stock mạnh và đang cải thiện → ưu tiên mua
+  2. RS dương + ↓ = stock vẫn outperform nhưng đang yếu dần → cẩn thận
+  3. RS âm + ↑ = stock yếu nhưng đang hồi phục (có thể tạo đáy trước index) → theo dõi
+  4. RS âm + ↓ = stock yếu và tiếp tục yếu → tránh hoàn toàn
+- **Trường hợp đặc biệt:**
+  - Stock giảm ít hơn index trong correction: RS sẽ dương dù cả hai đều giảm → institutional holding
+  - Stock tạo đáy trước index: RS sẽ chuyển từ ↓ sang ↑ trước khi index phục hồi → leading signal
+- **Thay đổi Index:** Vào Settings → group "RS" → đổi sang `HOSE:VN30`, `SP:SPX`, etc. tùy thị trường
+- **Lưu ý:** Cần tối thiểu 73 phiên data trên chart. Stock mới niêm yết sẽ hiện "N/A".
 
 ---
 

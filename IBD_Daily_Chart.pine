@@ -15,6 +15,7 @@ showPivots  = input.bool(true, "Đỉnh/Đáy", group="Hiển thị")
 showGaps    = input.bool(true, "Gap marker", group="Hiển thị")
 show52wHigh = input.bool(true, "52W High", group="Hiển thị")
 showBreakout = input.bool(true, "Breakout (B)", group="Hiển thị")
+showPriceLine = input.bool(true, "Đường giá hiện tại", group="Hiển thị")
 
 // --- Thanh HLC kiểu IBD (không có open tick) ---
 isUp = close >= close[1]
@@ -22,6 +23,14 @@ barCol = isUp ? color.black : color.red
 
 plotcandle(close, high, low, close, color=color.new(barCol, 100), wickcolor=barCol, bordercolor=barCol)
 plotbar(close, high, low, close, color=barCol)
+
+// --- Đường kẻ ngang tại giá hiện tại (kéo dài toàn bộ chart) ---
+var line priceLine = na
+if barstate.islast and showPriceLine
+    if not na(priceLine)
+        line.delete(priceLine)
+    priceLine := line.new(bar_index - 500, close, bar_index + 50, close,
+         color=color.new(color.gray, 30), width=1, style=line.style_dashed, extend=extend.both)
 
 // --- Đường trung bình động ---
 ma20  = ta.sma(close, len20)
@@ -75,6 +84,22 @@ plot(show52wHigh ? weekHigh252 : na, "52W High", color=color.purple, linewidth=1
 // Đỏ = giá dưới MA (âm), Xanh = giá trên MA (dương)
 showTable = input.bool(true, "Show MA Distance Table", group="Table")
 
+// --- RS vs Index (Relative Strength) ---
+// So sánh performance cổ phiếu vs index trong 63 ngày (≈ 3 tháng)
+rsIndex = input.symbol("HOSE:VNINDEX", "Index so sánh RS", group="RS")
+indexClose = request.security(rsIndex, timeframe.period, close)
+
+// Performance 63 ngày (3 tháng)
+stockPerf63 = bar_index >= 63 and close[63] > 0 ? (close - close[63]) / close[63] * 100 : na
+indexPerf63 = bar_index >= 63 and not na(indexClose) and not na(indexClose[63]) and indexClose[63] > 0 ? (indexClose - indexClose[63]) / indexClose[63] * 100 : na
+rsValue = not na(stockPerf63) and not na(indexPerf63) ? stockPerf63 - indexPerf63 : na
+
+// RS Trend: RS hôm nay vs RS 10 ngày trước (đang cải thiện hay yếu đi)
+stockPerf63_10 = bar_index >= 73 and close[73] > 0 ? (close[10] - close[73]) / close[73] * 100 : na
+indexPerf63_10 = bar_index >= 73 and not na(indexClose[10]) and not na(indexClose[73]) and indexClose[73] > 0 ? (indexClose[10] - indexClose[73]) / indexClose[73] * 100 : na
+rsValue10 = not na(stockPerf63_10) and not na(indexPerf63_10) ? stockPerf63_10 - indexPerf63_10 : na
+rsTrend = not na(rsValue) and not na(rsValue10) ? rsValue - rsValue10 : na
+
 // Tính ATR 14 ngày (biên độ trung bình)
 atrValue = ta.atr(14)
 
@@ -96,8 +121,6 @@ udRatio   = dnVol50 > 0 ? upVol50 / dnVol50 : 0.0
 // Đếm số phiên phân phối trong 25 ngày gần nhất (O'Neil)
 // Phiên phân phối = giá giảm > 0.2% + volume tăng so với phiên trước
 // Xóa phiên khi: quá 25 ngày HOẶC giá đã rally ≥ 5% kể từ close phiên đó
-// (Dùng cách đơn giản: đếm phiên dist mà close phiên đó + 5% > giá hiện tại)
-isDistDay = close < close[1] * 0.998 and volume > volume[1]
 
 // Đếm phiên phân phối chưa bị "defeated" (giá chưa rally 5% từ close phiên dist)
 var int distDayCount = 0
@@ -113,6 +136,14 @@ for i = 1 to 25
 // Kết hợp 3 yếu tố: Demand, Supply, Price → điểm 0-100
 volAvg20 = ta.sma(volume, 20)
 volAvg50MF = ta.sma(volume, 50)
+volAvg10 = ta.sma(volume, 10)  // Dùng cho Vol Trend
+
+// --- Tight Close Count (VCP signal) ---
+// Đếm số ngày liên tiếp biên độ bar < 0.5 × ATR(14)
+// Nhiều ngày tight liên tiếp = volatility contraction, sẵn sàng breakout
+isTightBar = (high - low) < atrValue * 0.5
+var int tightCount = 0
+tightCount := isTightBar ? tightCount + 1 : 0
 
 // Close Position: (close - low) / (high - low)
 closePos = high != low ? (close - low) / (high - low) : 0.5
@@ -120,7 +151,6 @@ closePos5 = ta.sma(closePos, 5)
 
 // Demand: volume ngày tăng 10 ngày / vol avg 20 ngày
 upVolSum10 = math.sum(close > close[1] ? volume : 0, 10)
-upDays10   = math.sum(close > close[1] ? 1 : 0, 10)
 demandRatio = volAvg20 > 0 ? upVolSum10 / (volAvg20 * 10) : 0
 
 // Supply: volume ngày giảm 10 ngày (càng thấp càng tốt)
@@ -137,55 +167,24 @@ priceScore  = closePos5 * 0.4 + supportScore * 0.4 + (close > ta.highest(high, 2
 
 mainForceScore = math.round((demandScore * 38 + supplyScore * 34 + priceScore * 28))
 
-// Tính Minervini Trend Template (SEPA) — 8 điều kiện Stage 2
-// 1. Giá > MA150 | 2. Giá > MA200 | 3. MA150 > MA200
-// 4. MA200 đang tăng (so với 20 ngày trước) | 5. Giá > MA50
-// 6. Giá cách 52-week low ≥ 25% | 7. Giá cách 52-week high ≤ 25%
-// 8. (Bỏ RS rating vì cần data benchmark)
-weekLow252  = ta.lowest(close, 252)
-
-cond1 = close > ma150
-cond2 = close > ma200
-cond3 = ma150 > ma200
-cond4 = ma200 > ma200[20]  // MA200 đang tăng
-cond5 = close > ma50
-cond6 = ((close - weekLow252) / weekLow252 * 100) >= 25  // Cách 52w low ≥ 25%
-cond7 = ((weekHigh252 - close) / weekHigh252 * 100) <= 25  // Cách 52w high ≤ 25%
-
-// Đếm số điều kiện đạt (tối đa 7)
-trendScore = (cond1 ? 1 : 0) + (cond2 ? 1 : 0) + (cond3 ? 1 : 0) + (cond4 ? 1 : 0) + (cond5 ? 1 : 0) + (cond6 ? 1 : 0) + (cond7 ? 1 : 0)
-
-// --- Base Count (O'Neil) ---
-// Đếm số lần breakout pivot high trong uptrend hiện tại
-// Reset khi stock rơi xuống dưới MA200 (kết thúc uptrend)
-var int baseCount = 0
+// --- Breakout Signal (O'Neil) ---
+// Khi giá breakout qua pivot high gần nhất
 var float lastPivotHigh = 0.0
-var bool waitForNewPivot = false  // Chờ pivot mới sau mỗi breakout
+var bool waitForNewPivot = false
 
-// Khi có pivot high mới → cập nhật mức pivot, cho phép trigger breakout
 if not na(ph)
     lastPivotHigh := ph
     waitForNewPivot := false
 
-// Khi giá breakout qua pivot high gần nhất → tăng base count
 breakoutSignal = close > lastPivotHigh and close[1] <= lastPivotHigh and lastPivotHigh > 0 and not waitForNewPivot
 if breakoutSignal
-    baseCount += 1
-    waitForNewPivot := true  // Chặn trigger lại cho đến khi có pivot mới
+    waitForNewPivot := true
 
 // Hiện chữ "B" trên chart khi breakout pivot
 plotshape(breakoutSignal and showBreakout, title="Breakout", style=shape.triangleup,
      location=location.belowbar, color=color.blue, size=size.tiny, text="B")
 
-// Reset base count khi stock rơi khỏi uptrend (giá < MA200 liên tiếp 3 phiên)
-// Không reset nếu chỉ xuyên thủng giả 1-2 phiên rồi bật lên ngay
-belowMA200count = ta.barssince(close >= ma200)
-if belowMA200count >= 3
-    baseCount := 0
-    lastPivotHigh := 0.0
-    waitForNewPivot := false
-
-var table maTable = table.new(position.top_right, 2, 12,
+var table maTable = table.new(position.top_right, 2, 13,
      bgcolor=color.new(color.white, 0),
      frame_color=color.black, frame_width=1,
      border_color=color.gray, border_width=1)
@@ -268,50 +267,83 @@ if barstate.islast and showTable
     table.cell(maTable, 1, 7, str.tostring(udRatio, "#.##") + " — " + udLabel,
          text_color=udCol, text_formatting=text.format_bold)
 
-    // Minervini Trend Template — xác định Stage
-    string trendText = ""
-    color trendCol = color.black
-    if trendScore == 7
-        trendText := "Stage 2 ✓ (" + str.tostring(trendScore) + "/7)"
-        trendCol := color.green
-    else if trendScore >= 5 and close > ma150 and close > ma50
-        trendText := "Stage 2 sớm (" + str.tostring(trendScore) + "/7)"
-        trendCol := color.green
-    else if close > ma150 and close < ma50
-        // Giá trên MA150 nhưng dưới MA50 → đang yếu dần (Stage 3)
-        trendText := "Stage 3 ⚠ (" + str.tostring(trendScore) + "/7)"
-        trendCol := color.orange
-    else if close < ma150 and close < ma200
-        // Giá dưới cả MA150 và MA200 → downtrend (Stage 4)
-        trendText := "Stage 4 ▼ (" + str.tostring(trendScore) + "/7)"
-        trendCol := color.red
-    else
-        // Giá quanh MA, chưa xác định rõ → nền tích lũy (Stage 1)
-        trendText := "Stage 1 — (" + str.tostring(trendScore) + "/7)"
-        trendCol := color.gray
-    table.cell(maTable, 0, 8, "SEPA", text_color=color.black)
-    table.cell(maTable, 1, 8, trendText,
-         text_color=trendCol, text_formatting=text.format_bold)
-
-    // Base Count — đếm số lần breakout trong uptrend
-    baseCol = baseCount <= 2 ? color.green : baseCount <= 3 ? color.orange : color.red
-    baseLabel = baseCount == 0 ? "Chưa có" : baseCount <= 2 ? "Tốt" : baseCount == 3 ? "Cẩn thận" : "Muộn"
-    table.cell(maTable, 0, 9, "Base", text_color=color.black)
-    table.cell(maTable, 1, 9, "Lần " + str.tostring(baseCount) + " — " + baseLabel,
-         text_color=baseCol, text_formatting=text.format_bold)
-
     // Số phiên phân phối 25 ngày (O'Neil: ≥ 5 = nguy hiểm)
     distCol = distDayCount >= 5 ? color.red : distDayCount >= 3 ? color.orange : color.green
-    table.cell(maTable, 0, 10, "Dist Day", text_color=color.black)
-    table.cell(maTable, 1, 10, str.tostring(distDayCount) + "/25 ngày",
+    table.cell(maTable, 0, 8, "Dist Day", text_color=color.black)
+    table.cell(maTable, 1, 8, str.tostring(distDayCount) + "/25 ngày",
          text_color=distCol, text_formatting=text.format_bold)
 
     // Main Force Score — smart money đang mua hay bán
     mfCol = mainForceScore >= 70 ? color.green : mainForceScore < 40 ? color.red : color.black
     mfLabel = mainForceScore >= 70 ? "Mua vào" : mainForceScore >= 40 ? "Trung tính" : "Bán ra"
-    table.cell(maTable, 0, 11, "MF Score", text_color=color.black)
-    table.cell(maTable, 1, 11, str.tostring(mainForceScore) + " — " + mfLabel,
+    table.cell(maTable, 0, 9, "MF Score", text_color=color.black)
+    table.cell(maTable, 1, 9, str.tostring(mainForceScore) + " — " + mfLabel,
          text_color=mfCol, text_formatting=text.format_bold)
+
+    // Vol Trend — Volume 10 ngày / Volume 50 ngày (Minervini VCP)
+    // < 0.7 = vol co lại (dry-up, sẵn sàng breakout)
+    // > 1.3 = vol expand (breakout hoặc phân phối)
+    volTrend = volAvg50MF > 0 ? volAvg10 / volAvg50MF : 0.0
+    vtCol = volTrend < 0.7 ? color.green : volTrend > 1.3 ? color.orange : color.black
+    string vtLabel = ""
+    if volTrend < 0.7
+        vtLabel := "Dry-up"
+    else if volTrend > 1.5
+        vtLabel := "Bùng nổ"
+    else if volTrend > 1.3
+        vtLabel := "Expand"
+    else
+        vtLabel := "Bình thường"
+    table.cell(maTable, 0, 10, "Vol Trend", text_color=color.black)
+    table.cell(maTable, 1, 10, str.tostring(volTrend, "#.##") + "x — " + vtLabel,
+         text_color=vtCol, text_formatting=text.format_bold)
+
+    // Tight Close — đếm ngày liên tiếp biên độ < 0.5 ATR (VCP nén giá)
+    tightCol = tightCount >= 5 ? color.green : tightCount >= 3 ? color.teal : color.black
+    string tightLabel = ""
+    if tightCount >= 5
+        tightLabel := "Nén mạnh ✓"
+    else if tightCount >= 3
+        tightLabel := "Nén"
+    else
+        tightLabel := "—"
+    table.cell(maTable, 0, 11, "Tight", text_color=color.black)
+    table.cell(maTable, 1, 11, str.tostring(tightCount) + " ngày — " + tightLabel,
+         text_color=tightCol, text_formatting=text.format_bold)
+
+    // RS vs Index — Relative Strength 3 tháng + trend
+    color rsCol = color.gray
+    string rsText = "N/A"
+    if not na(rsValue)
+        string rsLabel = ""
+        if rsValue > 10 and not na(rsTrend) and rsTrend > 0
+            rsLabel := "Dẫn dắt"
+            rsCol := color.green
+        else if rsValue > 0 and not na(rsTrend) and rsTrend > 2
+            rsLabel := "Cải thiện"
+            rsCol := color.green
+        else if rsValue > 0 and (na(rsTrend) or (rsTrend >= -2 and rsTrend <= 2))
+            rsLabel := "Khoẻ"
+            rsCol := color.teal
+        else if rsValue > 0 and not na(rsTrend) and rsTrend < -2
+            rsLabel := "Yếu dần"
+            rsCol := color.orange
+        else if rsValue <= 0 and not na(rsTrend) and rsTrend > 2
+            rsLabel := "Hồi phục"
+            rsCol := color.teal
+        else if rsValue <= 0 and (na(rsTrend) or rsTrend >= -2)
+            rsLabel := "Yếu"
+            rsCol := color.red
+        else
+            rsLabel := "Tụt hậu"
+            rsCol := color.red
+        string trendArrow = ""
+        if not na(rsTrend)
+            trendArrow := rsTrend > 2 ? " ↑" : rsTrend < -2 ? " ↓" : " →"
+        rsText := (rsValue > 0 ? "+" : "") + str.tostring(rsValue, "#.#") + "%" + trendArrow + " " + rsLabel
+    table.cell(maTable, 0, 12, "RS", text_color=color.black)
+    table.cell(maTable, 1, 12, rsText,
+         text_color=rsCol, text_formatting=text.format_bold)
 
 // --- Bảng phân tích cơ bản (góc dưới phải) ---
 // Hiện các chỉ số: rẻ/đắt, tăng trưởng, tiềm năng
