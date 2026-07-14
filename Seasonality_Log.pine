@@ -1,0 +1,98 @@
+//@version=6
+indicator("Seasonality Log", overlay=true)
+
+// --- Tính % thay đổi mỗi tháng qua tất cả các năm trong lịch sử ---
+// Kết quả hiện trong Pine Logs (mở: Pine Editor → ... → Pine Logs)
+
+// Biến tích lũy cho mỗi tháng (index 0-11)
+var float[] monthSum = array.new_float(12, 0.0)    // Tổng % thay đổi
+var int[] monthCount = array.new_int(12, 0)         // Số năm có data
+var int[] monthWin = array.new_int(12, 0)           // Số năm tháng đó tăng
+var float[] monthMax = array.new_float(12, -999.0)  // Tháng tăng mạnh nhất (best year)
+var float[] monthMin = array.new_float(12, 999.0)   // Tháng giảm nặng nhất (worst year)
+
+// Phát hiện bar đầu tiên của mỗi tháng mới
+isNewMonth = month != month[1]
+
+// Khi sang tháng mới → tính % thay đổi tháng vừa kết thúc
+var float monthOpen = na
+if na(monthOpen)
+    monthOpen := close
+
+if isNewMonth
+    int prevMonth = month[1] - 1  // Index 0-11
+    float monthReturn = not na(monthOpen) and monthOpen > 0 ? (close[1] - monthOpen) / monthOpen * 100 : 0.0
+
+    // Cộng vào tổng
+    array.set(monthSum, prevMonth, array.get(monthSum, prevMonth) + monthReturn)
+    array.set(monthCount, prevMonth, array.get(monthCount, prevMonth) + 1)
+    if monthReturn > 0
+        array.set(monthWin, prevMonth, array.get(monthWin, prevMonth) + 1)
+
+    // Cập nhật max/min
+    if monthReturn > array.get(monthMax, prevMonth)
+        array.set(monthMax, prevMonth, monthReturn)
+    if monthReturn < array.get(monthMin, prevMonth)
+        array.set(monthMin, prevMonth, monthReturn)
+
+    // Reset giá mở tháng mới
+    monthOpen := open
+
+// Ở bar cuối cùng → log kết quả
+if barstate.islast
+    string[] monthNames = array.from("T1 ", "T2 ", "T3 ", "T4 ", "T5 ", "T6 ", "T7 ", "T8 ", "T9 ", "T10", "T11", "T12")
+
+    log.info("══════════════════════════════════════════════════════════════")
+    log.info("  SEASONALITY — " + syminfo.ticker + " (" + syminfo.description + ")")
+    log.info("══════════════════════════════════════════════════════════════")
+    log.info("Tháng | Avg %  | Win Rate | Best    | Worst   | Samples")
+    log.info("──────────────────────────────────────────────────────────────")
+
+    float bestAvg = -999.0
+    int bestMonth = 0
+    float worstAvg = 999.0
+    int worstMonth = 0
+
+    for i = 0 to 11
+        int cnt = array.get(monthCount, i)
+        float avg = cnt > 0 ? array.get(monthSum, i) / cnt : 0.0
+        int wins = array.get(monthWin, i)
+        float winRate = cnt > 0 ? float(wins) / float(cnt) * 100 : 0.0
+        float best = array.get(monthMax, i)
+        float worst = array.get(monthMin, i)
+
+        string star = avg > 2 ? " ★★" : avg > 1 ? " ★" : avg < -2 ? " ✗✗" : avg < -1 ? " ✗" : ""
+        string sign = avg >= 0 ? "+" : ""
+        string bestStr = best > -999 ? "+" + str.tostring(best, "#.#") + "%" : "N/A"
+        string worstStr = worst < 999 ? str.tostring(worst, "#.#") + "%" : "N/A"
+
+        log.info(array.get(monthNames, i) + "   | " + sign + str.tostring(avg, "#.##") + "% | " + str.tostring(winRate, "#") + "%      | " + bestStr + "  | " + worstStr + "  | " + str.tostring(cnt) + " năm" + star)
+
+        if avg > bestAvg
+            bestAvg := avg
+            bestMonth := i
+        if avg < worstAvg
+            worstAvg := avg
+            worstMonth := i
+
+    log.info("──────────────────────────────────────────────────────────────")
+    log.info("★ Tháng tốt nhất:  " + array.get(monthNames, bestMonth) + " (avg " + str.tostring(bestAvg, "#.##") + "%)")
+    log.info("✗ Tháng xấu nhất:  " + array.get(monthNames, worstMonth) + " (avg " + str.tostring(worstAvg, "#.##") + "%)")
+    log.info("──────────────────────────────────────────────────────────────")
+
+    // Tháng hiện tại + tháng kế tiếp
+    int curMonth = month - 1
+    int nextMonth = curMonth == 11 ? 0 : curMonth + 1
+    int curCnt = array.get(monthCount, curMonth)
+    int nextCnt = array.get(monthCount, nextMonth)
+    float curAvg = curCnt > 0 ? array.get(monthSum, curMonth) / curCnt : 0.0
+    float nextAvg = nextCnt > 0 ? array.get(monthSum, nextMonth) / nextCnt : 0.0
+    float curWR = curCnt > 0 ? float(array.get(monthWin, curMonth)) / float(curCnt) * 100 : 0.0
+    float nextWR = nextCnt > 0 ? float(array.get(monthWin, nextMonth)) / float(nextCnt) * 100 : 0.0
+
+    string curSign = curAvg >= 0 ? "+" : ""
+    string nextSign = nextAvg >= 0 ? "+" : ""
+    log.info("📅 Hiện tại " + array.get(monthNames, curMonth) + ": avg " + curSign + str.tostring(curAvg, "#.##") + "% | Win " + str.tostring(curWR, "#") + "%")
+    log.info("📅 Sắp tới  " + array.get(monthNames, nextMonth) + ": avg " + nextSign + str.tostring(nextAvg, "#.##") + "% | Win " + str.tostring(nextWR, "#") + "%")
+    log.info("══════════════════════════════════════════════════════════════")
+    log.info("★★ = avg > 2% | ★ = avg > 1% | ✗ = avg < -1% | ✗✗ = avg < -2%")
